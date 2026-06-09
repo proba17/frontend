@@ -15,6 +15,8 @@ import type {
   TopicUpdate,
   UserResult,
   LeaderboardItem,
+  FinalTestQuestion,
+  FinalTestResult,
 } from '../types';
 
 const API_URL = 'http://localhost:8000';
@@ -28,7 +30,7 @@ function setToken(token: string): void {
 }
 
 export function logout(): void {
-  localStorage.removeItem('token');
+  localStorage.removeItem('access_token');
   localStorage.removeItem('lastPage');
 }
 
@@ -191,6 +193,8 @@ export async function getMyResults(): Promise<UserResult[]> {
   return request<UserResult[]>('/results/my');
 }
 
+
+
 export async function getLevelTopic(levelId: number): Promise<Topic> {
   return request<Topic>(`/levels/${levelId}/topic`);
 }
@@ -229,7 +233,7 @@ export async function refreshToken(): Promise<void> {
     method: 'POST',
   });
 
-  localStorage.setItem('token', response.access_token);
+  localStorage.setItem('access_token', response.access_token);
 }
 
 export async function deleteMyAccount(): Promise<{ message: string }> {
@@ -237,3 +241,100 @@ export async function deleteMyAccount(): Promise<{ message: string }> {
     method: 'DELETE',
   });
 }
+
+export async function getFinalTestQuestions(): Promise<FinalTestQuestion[]> {
+  return request<FinalTestQuestion[]>(
+    '/final-test/questions'
+  );
+}
+
+export async function submitFinalTest(
+  data: unknown
+): Promise<FinalTestResult> {
+
+  return request<FinalTestResult>(
+    '/final-test/submit',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export interface FinalTestStatistics {
+  attempts: number;
+
+  best_score: number;
+
+  average_score: number;
+
+  last_score: number;
+
+  certificate: string;
+}
+
+export async function getFinalTestStatistics():
+Promise<FinalTestStatistics> {
+
+  return request<FinalTestStatistics>(
+    '/final-test/statistics'
+  );
+}
+
+
+export async function downloadCertificate() {
+
+  const token =
+    localStorage.getItem(
+      'access_token'
+    );
+
+  const response =
+    await fetch(
+      `${API_URL}/certificate/pdf`,
+      {
+        headers: {
+          Authorization:
+            `Bearer ${token}`
+        }
+      }
+    );
+
+  const blob =
+    await response.blob();
+
+  const url =
+    window.URL.createObjectURL(
+      blob
+    );
+
+  const a =
+    document.createElement('a');
+
+  a.href = url;
+
+  a.download =
+    'certificate.pdf';
+
+  a.click();
+
+  window.URL.revokeObjectURL(
+    url
+  );
+}
+
+export async function getFinalTestDifficulty(): Promise<{
+  accuracy: number;
+  questions_count: number;
+  level: string;
+}> {
+
+  return request<{
+    accuracy: number;
+    questions_count: number;
+    level: string;
+  }>(
+    '/final-test/difficulty'
+  );
+}
+

@@ -534,15 +534,47 @@ function renderTestList(app: HTMLDivElement): void {
   });
 }
 
-function renderSelectedTest(app: HTMLDivElement, test: TestGroup): void {
+
+function renderSelectedTest(
+  app: HTMLDivElement,
+  test: TestGroup
+): void {
+
   let currentIndex = 0;
   let selectedIndex: number | null = null;
   let correctAnswers = 0;
-  const userAnswers: Array<number | null> = [];
+
+  const userAnswers:
+    Array<number | null> = [];
+
+  const randomizedQuestions =
+    test.questions.map(question => {
+
+      const shuffled =
+        question.options
+          .map((option, index) => ({
+            option,
+            isCorrect:
+              index === question.correctIndex
+          }))
+          .sort(() => Math.random() - 0.5);
+
+      return {
+        ...question,
+        options:
+          shuffled.map(x => x.option),
+
+        correctIndex:
+          shuffled.findIndex(
+            x => x.isCorrect
+          )
+      };
+    });
 
   function renderQuestion(): void {
-    const question = test.questions[currentIndex];
-    selectedIndex = userAnswers[currentIndex] ?? null;
+const question =
+  randomizedQuestions[currentIndex];
+      selectedIndex = userAnswers[currentIndex] ?? null;
 
     app.innerHTML = `
       <div class="app">
@@ -634,7 +666,8 @@ function renderSelectedTest(app: HTMLDivElement, test: TestGroup): void {
   }
 
   function renderResult(): void {
-    correctAnswers = test.questions.reduce((sum, question, index) => {
+    correctAnswers =
+  randomizedQuestions.reduce((sum, question, index) => {
       return sum + (userAnswers[index] === question.correctIndex ? 1 : 0);
     }, 0);
 
@@ -679,7 +712,7 @@ function renderSelectedTest(app: HTMLDivElement, test: TestGroup): void {
           <h2>Разбор ответов</h2>
 
           <div class="test-review-list">
-            ${test.questions.map((question, index) => {
+            ${randomizedQuestions.map((question, index) => {
               const userAnswer = userAnswers[index];
               const isCorrect = userAnswer === question.correctIndex;
 

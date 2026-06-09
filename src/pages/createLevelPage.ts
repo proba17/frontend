@@ -268,109 +268,297 @@ function createWavesConfig(scenario: string): Array<Record<string, unknown>> {
   ];
 }
 
-function createDefenseConfig(scenario: string): Array<Record<string, unknown>> {
-  const basic = [
-    {
-      name: 'Базовый фильтр',
-      type: 'protocol_filter',
-      cost: 30,
-      range: 120,
-      damage: 1,
-      description: 'Фильтрует пакеты по выбранному протоколу.',
-    },
-  ];
+function createDefenseConfig(
+  scenario: string
+): Array<Record<string, unknown>> {
 
   if (scenario === 'icmp') {
+
     return [
-      ...basic,
       {
-        name: 'ICMP-фильтр',
-        type: 'icmp_filter',
-        cost: 40,
-        range: 130,
-        damage: 2,
-        description: 'Блокирует подозрительные ICMP-пакеты.',
+        name: 'Router ACL',
+        type: 'router_acl',
+        moduleCode: 'router_acl',
+
+        cost: 50,
+        range: 120,
+        damage: 1,
+
+        description:
+          'Фильтрация пакетов по IP-адресам и ICMP.',
+
+        analyzes: [
+          'protocol',
+          'src_ip',
+          'dst_ip',
+          'icmp_type'
+        ],
+
+        blocks: [
+          'ICMP',
+          'PRIVATE_IP'
+        ]
       },
+
       {
-        name: 'Rate Limiter',
-        type: 'rate_limiter',
-        cost: 60,
+        name: 'Anti-DDoS',
+        type: 'anti_ddos',
+        moduleCode: 'anti_ddos',
+
+        cost: 90,
         range: 150,
         damage: 2,
-        description: 'Ограничивает частоту однотипных запросов.',
-      },
+
+        description:
+          'Обнаружение ICMP Flood.',
+
+        analyzes: [
+          'packet_rate',
+          'connection_rate'
+        ],
+
+        blocks: [
+          'ICMP_FLOOD'
+        ]
+      }
     ];
   }
 
   if (scenario === 'udp') {
+
     return [
-      ...basic,
       {
-        name: 'UDP-фильтр',
-        type: 'udp_filter',
+        name: 'Router ACL',
+        type: 'router_acl',
+        moduleCode: 'router_acl',
+
         cost: 50,
-        range: 130,
-        damage: 2,
-        description: 'Блокирует подозрительные UDP-пакеты.',
+        range: 120,
+        damage: 1,
+
+        description:
+          'Фильтрация UDP-пакетов.',
+
+        analyzes: [
+          'protocol',
+          'src_ip',
+          'dst_ip'
+        ],
+
+        blocks: [
+          'UDP'
+        ]
       },
+
       {
-        name: 'Rate Limiter',
-        type: 'rate_limiter',
-        cost: 60,
+        name: 'Anti-DDoS',
+        type: 'anti_ddos',
+        moduleCode: 'anti_ddos',
+
+        cost: 90,
         range: 150,
         damage: 2,
-        description: 'Ограничивает частоту UDP-запросов.',
+
+        description:
+          'Обнаружение UDP Flood.',
+
+        analyzes: [
+          'packet_rate'
+        ],
+
+        blocks: [
+          'UDP_FLOOD'
+        ]
       },
+
+      {
+        name: 'Snort IPS',
+        type: 'snort_ips',
+        moduleCode: 'snort_ips',
+
+        cost: 120,
+        range: 170,
+        damage: 3,
+
+        description:
+          'Анализ сетевых сигнатур.',
+
+        analyzes: [
+          'signature',
+          'payload'
+        ],
+
+        blocks: [
+          'BOTNET'
+        ]
+      }
     ];
   }
 
   if (scenario === 'tcp') {
+
     return [
-      ...basic,
       {
-        name: 'Firewall',
-        type: 'firewall',
+        name: 'Stateful Firewall',
+        type: 'stateful_firewall',
+        moduleCode: 'stateful_firewall',
+
         cost: 70,
         range: 140,
         damage: 2,
-        description: 'Блокирует подозрительные TCP-пакеты.',
+
+        description:
+          'Контроль TCP-соединений.',
+
+        analyzes: [
+          'protocol',
+          'src_port',
+          'dst_port'
+        ],
+
+        blocks: [
+          'TCP'
+        ]
       },
+
       {
-        name: 'SYN-защита',
-        type: 'syn_protection',
-        cost: 80,
+        name: 'Anti-DDoS',
+        type: 'anti_ddos',
+        moduleCode: 'anti_ddos',
+
+        cost: 90,
         range: 160,
         damage: 3,
-        description: 'Эффективна против SYN-флуда.',
+
+        description:
+          'Защита от SYN Flood.',
+
+        analyzes: [
+          'packet_rate',
+          'tcp_flags'
+        ],
+
+        blocks: [
+          'SYN_FLOOD'
+        ]
       },
+
+      {
+        name: 'Snort IPS',
+        type: 'snort_ips',
+        moduleCode: 'snort_ips',
+
+        cost: 120,
+        range: 170,
+        damage: 3,
+
+        description:
+          'Обнаружение сканирования портов.',
+
+        analyzes: [
+          'signature'
+        ],
+
+        blocks: [
+          'PORT_SCAN'
+        ]
+      }
     ];
   }
 
   return [
-    ...basic,
+
     {
-      name: 'Firewall',
-      type: 'firewall',
-      cost: 70,
+      name: 'Router ACL',
+      type: 'router_acl',
+      moduleCode: 'router_acl',
+
+      cost: 50,
+      range: 120,
+      damage: 1,
+
+      description:
+        'Фильтрация IP и протоколов.',
+
+      analyzes: [
+        'protocol',
+        'src_ip',
+        'dst_ip'
+      ],
+
+      blocks: [
+        'TCP',
+        'UDP',
+        'ICMP'
+      ]
+    },
+
+    {
+      name: 'Stateful Firewall',
+      type: 'stateful_firewall',
+      moduleCode: 'stateful_firewall',
+
+      cost: 80,
       range: 140,
       damage: 2,
-      description: 'Универсальная фильтрация подозрительного трафика.',
+
+      description:
+        'Контроль состояния соединений.',
+
+      analyzes: [
+        'tcp_flags',
+        'src_port',
+        'dst_port'
+      ],
+
+      blocks: [
+        'SYN_FLOOD'
+      ]
     },
+
     {
-      name: 'Rate Limiter',
-      type: 'rate_limiter',
-      cost: 60,
-      range: 150,
-      damage: 2,
-      description: 'Эффективен против flood-атак.',
-    },
-    {
-      name: 'SYN-защита',
-      type: 'syn_protection',
-      cost: 80,
+      name: 'Anti-DDoS',
+      type: 'anti_ddos',
+      moduleCode: 'anti_ddos',
+
+      cost: 100,
       range: 160,
-      damage: 3,
-      description: 'Эффективна против SYN-флуда.',
+      damage: 2,
+
+      description:
+        'Защита от flood-атак.',
+
+      analyzes: [
+        'packet_rate'
+      ],
+
+      blocks: [
+        'UDP_FLOOD',
+        'ICMP_FLOOD'
+      ]
     },
+
+    {
+      name: 'Snort IPS',
+      type: 'snort_ips',
+      moduleCode: 'snort_ips',
+
+      cost: 130,
+      range: 170,
+      damage: 3,
+
+      description:
+        'Сигнатурное обнаружение атак.',
+
+      analyzes: [
+        'signature',
+        'payload'
+      ],
+
+      blocks: [
+        'PORT_SCAN',
+        'BOTNET'
+      ]
+    }
   ];
 }

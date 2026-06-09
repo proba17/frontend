@@ -16,6 +16,7 @@ import { renderTeacherPage } from './pages/teacherPage';
 import { renderAboutPage } from './pages/aboutPage';
 import { renderLeaderboardPage } from './pages/leaderboardPage';
 import { renderTestsPage } from './pages/testsPage';
+import { renderFinalTestPage } from './pages/finalTestPage';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -50,6 +51,7 @@ export function navigate(page: string, params: Record<string, unknown> = {}): vo
   'teacher',
   'admin',
   'about',
+  'final-test',
 ];
 
 if (pagesToSave.includes(page)) {
@@ -70,6 +72,8 @@ if (page === 'game') {
     return;
   }
 
+ 
+
   if (page === 'topics') {
     renderTopicsPage(app);
     return;
@@ -77,6 +81,11 @@ if (page === 'game') {
 
   if (page === 'tests') {
   renderTestsPage(app);
+  return;
+}
+
+if (page === 'final-test') {
+  renderFinalTestPage(app);
   return;
 }
 
@@ -146,7 +155,7 @@ if (page === 'about') {
 
 
 
-const token = localStorage.getItem('token');
+const token = localStorage.getItem('access_token');
 const lastPage = localStorage.getItem('lastPage') || 'levels';
 
 if (token) {

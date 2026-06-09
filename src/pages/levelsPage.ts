@@ -1,4 +1,4 @@
-import { getLevels, getMe, logout, refreshToken} from '../api/client';
+import { getLevels, getMe, logout, refreshToken, getMyStatistics} from '../api/client';
 import { navigate } from '../main';
 
 export async function renderLevelsPage(app: HTMLDivElement): Promise<void> {
@@ -14,11 +14,15 @@ export async function renderLevelsPage(app: HTMLDivElement): Promise<void> {
   try {
   await refreshToken();
 
-    const [user, levels] = await Promise.all([
+    const [user, levels, statistics] = await Promise.all([
       
       getMe(),
       getLevels(),
+      getMyStatistics(),
     ]);
+
+    const finalTestUnlocked =
+  statistics.levels_completed >= levels.length;
 
     const campaignOrder = [
   'Базовая кампания',
@@ -60,6 +64,13 @@ if (levelsWithoutCampaign.length > 0) {
         <button class="button secondary" id="aboutButton">О проекте</button>
         <button class="button secondary" id="topicsButton">Обучение</button>
         <button class="button secondary" id="testsButton">Тесты</button>
+<button
+  class="button secondary"
+  id="finalTestButton"
+  ${!finalTestUnlocked ? 'disabled' : ''}
+>
+   Итоговый тест
+</button>
         <button class="button secondary" id="profileButton">Профиль</button>
         <button class="button secondary" id="resultsButton">Результаты</button>
         <button class="button secondary" id="leaderboardButton">Рейтинг</button>
@@ -74,9 +85,11 @@ if (levelsWithoutCampaign.length > 0) {
         <div class="hero-kicker">🛡️ Tower Defense + Network Security</div>
         <h1 class="glow-text">Защити сервер от сетевых атак</h1>
         <p>
-          Анализируй сетевые пакеты, выбирай подходящие защитные модули,
-          блокируй ICMP Flood, UDP Flood и SYN Flood, а затем изучай статистику прохождения.
-        </p>
+  Развёртывай реальные средства сетевой защиты:
+  ACL маршрутизатора, Stateful Firewall, Anti-DDoS,
+  Snort IPS, DNS Filter, WAF и Email Security Gateway.
+  Анализируй сетевые пакеты и отражай современные кибератаки.
+</p>
         <p>Пользователь: <b>${user.username}</b> | Роль: <b>${user.role}</b></p>
       </div>
 
@@ -151,6 +164,10 @@ document.querySelector<HTMLButtonElement>('#testsButton')?.addEventListener('cli
   navigate('tests');
 });
 
+document.querySelector<HTMLButtonElement>('#finalTestButton')?.addEventListener('click', () => {
+  navigate('final-test');
+});
+
 
     document.querySelector<HTMLButtonElement>('#topicsButton')!.addEventListener('click', () => {
       navigate('topics');
@@ -214,16 +231,13 @@ if (teacherButton) {
 
 function getCampaignDescription(campaign: string): string {
   if (campaign === 'Базовая кампания') {
-    return 'Начальные уровни: сетевые пакеты, ICMP, TCP и UDP-фильтрация.';
-  }
+return 'Изучение сетевых протоколов, маршрутизации и базовой фильтрации трафика.';  }
 
   if (campaign === 'Продвинутая кампания') {
-    return 'Уровни со сложными атаками: UDP Flood, SYN Flood, сканирование портов и IP Spoofing.';
-  }
+return 'Противодействие flood-атакам, сканированию портов и подмене IP-адресов.';  }
 
   if (campaign === 'Экспертная кампания') {
-    return 'Комплексные сценарии: смешанные атаки, вредоносная нагрузка, ботнет и финальная защита.';
-  }
+return 'Защита веб-приложений, DNS-инфраструктуры и электронной почты от современных угроз.';  }
 
   if (campaign === 'Пользовательская кампания') {
     return 'Уровни, созданные администратором через панель управления.';

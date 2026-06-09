@@ -12,11 +12,28 @@ interface Packet {
 
   protocol: string;
   attack: string | null;
-
+attackType?: string | null;
   sourceIp: string;
   destinationIp: string;
-  port: number;
+
+  sourcePort: number;
+  destinationPort: number;
+
   tcpFlags: string | null;
+  connectionState: string | null;
+
+  packetRate: number | null;
+  domain: string | null;
+  applicationProtocol: string | null;
+
+  httpMethod: string | null;
+  url: string | null;
+  payload: string | null;
+  signature: string | null;
+
+  osiLevel: number;
+  isMalicious: boolean;
+
   isSuspicious: boolean;
   explanation: string;
 
@@ -25,22 +42,38 @@ interface Packet {
   maxHealth: number;
   reward: number;
 
-  isAttack: boolean;
   reachedBase: boolean;
   destroyed: boolean;
+  country?: string;
+
+isProxy?: boolean;
+isBotnet?: boolean;
+senderEmail?: string | null;
 }
 
 interface Tower {
   id: number;
+
+  name: string;
+  moduleCode: string;
+
+  osiLevel: number;
+
+  analyzes: string[];
+  blocks: string[];
+
   x: number;
   y: number;
-  name: string;
-  type: string;
-  range: number;
+
   damage: number;
+  range: number;
+
+  type: string;
   cost: number;
+
   level: number;
   upgradeCost: number;
+
   lastShotTime: number;
 }
 
@@ -462,7 +495,6 @@ function renderGameTutorial(app: HTMLDivElement, level: Level): void {
 
 function startGame(app: HTMLDivElement, level: Level): void {
 const paths = getLevelPaths(level);
-const path = paths[0];
   const base = level.map_config?.base || DEFAULT_BASE;
   const modules = level.defense_config || [];
   const waves = level.waves_config || [];
@@ -622,15 +654,14 @@ let isMouseOnCanvas = false;
       Протокол: <b>${packet.protocol}</b><br>
       IP источника: <b>${packet.sourceIp}</b><br>
       IP назначения: <b>${packet.destinationIp}</b><br>
-      Порт: <b>${packet.port === 0 ? 'не используется' : packet.port}</b><br>
+      Порт: <b>${packet.destinationPort === 0 ? 'не используется' : packet.destinationPort}</b><br>
       TCP-флаги: <b>${packet.tcpFlags || 'не применимо'}</b><br>
-      Тип: <b>${packet.isAttack ? 'Вредоносный трафик' : 'Обычный трафик'}</b><br>
-      Ожидаемое действие: <b>${packet.isAttack ? 'заблокировать' : 'пропустить к серверу'}</b><br>
+      Тип: <b>${packet.isMalicious ? 'Вредоносный трафик' : 'Обычный трафик'}</b><br>
       Признак подозрительности: <b>${packet.isSuspicious ? 'да' : 'нет'}</b><br>
       Атака: <b>${packet.attack || 'нет'}</b><br>
       Здоровье: <b>${packet.health}/${packet.maxHealth}</b><br>
-      Урон при достижении базы: <b>${packet.isAttack ? packet.damage : 0}</b><br>
-      Награда за блокировку: <b>${packet.isAttack ? packet.reward : 0}</b> ресурсов<br>
+      Урон при достижении базы: <b>${packet.isMalicious ? packet.damage : 0}</b><br>
+      Награда за блокировку: <b>${packet.isMalicious ? packet.reward : 0}</b> ресурсов<br>
       <br>
       <b>Пояснение:</b><br>
       ${packet.explanation}
@@ -658,11 +689,19 @@ let isMouseOnCanvas = false;
    towerInfo.innerHTML = `
     <b>${tower.name}</b><br>
     Уровень: <b>${tower.level}</b><br>
-    Тип: <b>${tower.type}</b><br>
-    Урон: <b>${tower.damage}</b><br>
+Тип: <b>${getModuleDisplayName(tower.moduleCode)}</b>    Урон: <b>${tower.damage}</b><br>
     Радиус: <b>${tower.range}</b><br>
     Стоимость улучшения: <b>${tower.upgradeCost}</b> ресурсов<br>
     Возврат при удалении: <b>${Math.floor(tower.cost * 0.5)}</b> ресурсов<br>
+    <p>
+  <b>Анализирует:</b><br>
+  ${tower.analyzes.join(', ')}
+</p>
+
+<p>
+  <b>Блокирует:</b><br>
+  ${tower.blocks.join(', ')}
+</p>
     <div class="tower-actions">
       <button class="button small" id="upgradeTowerButton">Улучшить</button>
       <button class="button danger small" id="deleteTowerButton">Удалить</button>
@@ -677,6 +716,38 @@ let isMouseOnCanvas = false;
      deleteSelectedTower();
     });
   }
+
+  function getModuleDisplayName(
+  code: string
+): string {
+
+  switch (code) {
+
+    case 'router_acl':
+      return 'ACL маршрутизатора';
+
+    case 'stateful_firewall':
+      return 'Межсетевой экран с контролем состояния';
+
+    case 'anti_ddos':
+      return 'Anti-DDoS система';
+
+    case 'snort_ips':
+      return 'Система предотвращения вторжений';
+
+    case 'dns_filter':
+      return 'DNS-фильтр';
+
+    case 'waf':
+      return 'Web Application Firewall';
+
+    case 'email_gateway':
+      return 'Почтовый шлюз безопасности';
+
+    default:
+      return code;
+  }
+}
 
 function deleteSelectedTower(): void {
   if (isPaused || isFinished) {
@@ -746,6 +817,145 @@ function deleteSelectedTower(): void {
 
     resources -= tower.upgradeCost;
     tower.level += 1;
+
+    const nextLevel = tower.level;
+
+switch (tower.moduleCode) {
+
+  case 'router_acl':
+
+    if (nextLevel === 2) {
+      tower.analyzes.push('Network');
+      tower.blocks.push('private_ip');
+    }
+
+    if (nextLevel === 3) {
+      tower.analyzes.push('Subnet');
+      tower.blocks.push('ip_spoofing');
+    }
+
+    if (nextLevel === 4) {
+      tower.analyzes.push('GeoIP');
+      tower.blocks.push('blocked_ip');
+    }
+
+    break;
+
+  case 'stateful_firewall':
+
+    if (nextLevel === 2) {
+      tower.analyzes.push('TCP Flags');
+      tower.blocks.push('syn_flood');
+    }
+
+    if (nextLevel === 3) {
+      tower.analyzes.push('Connection State');
+      tower.blocks.push('port_scan');
+    }
+
+    if (nextLevel === 4) {
+      tower.analyzes.push('Session Tracking');
+      tower.blocks.push('unauthorized_port');
+    }
+
+    break;
+
+  case 'anti_ddos':
+
+    if (nextLevel === 2) {
+      tower.analyzes.push('Connection Rate');
+      tower.blocks.push('udp_flood');
+    }
+
+    if (nextLevel === 3) {
+      tower.analyzes.push('Traffic Burst');
+      tower.blocks.push('icmp_flood');
+    }
+
+    if (nextLevel === 4) {
+      tower.analyzes.push('HTTP Requests');
+      tower.blocks.push('http_flood');
+    }
+
+    break;
+
+  case 'snort_ips':
+
+    if (nextLevel === 2) {
+      tower.analyzes.push('Signature Database');
+      tower.blocks.push('known_exploit');
+    }
+
+    if (nextLevel === 3) {
+      tower.analyzes.push('Malware Detection');
+      tower.blocks.push('malware_traffic');
+    }
+
+    if (nextLevel === 4) {
+      tower.analyzes.push('Botnet Indicators');
+      tower.blocks.push('botnet');
+    }
+
+    break;
+
+  case 'dns_filter':
+
+    if (nextLevel === 2) {
+      tower.analyzes.push('DNS Reputation');
+      tower.blocks.push('malicious_domain');
+    }
+
+    if (nextLevel === 3) {
+      tower.analyzes.push('DNS Behavior');
+      tower.blocks.push('dns_tunneling');
+    }
+
+    if (nextLevel === 4) {
+      tower.analyzes.push('C2 Detection');
+      tower.blocks.push('c2_domain');
+    }
+
+    break;
+
+  case 'waf':
+
+    if (nextLevel === 2) {
+      tower.analyzes.push('SQL Patterns');
+      tower.blocks.push('sql_injection');
+    }
+
+    if (nextLevel === 3) {
+      tower.analyzes.push('JavaScript Payload');
+      tower.blocks.push('xss');
+    }
+
+    if (nextLevel === 4) {
+      tower.analyzes.push('Path Validation');
+      tower.blocks.push('path_traversal');
+    }
+
+    break;
+
+  case 'email_gateway':
+
+    if (nextLevel === 2) {
+      tower.analyzes.push('Links');
+      tower.blocks.push('phishing');
+    }
+
+    if (nextLevel === 3) {
+      tower.analyzes.push('Attachments');
+      tower.blocks.push('malware_attachment');
+    }
+
+    if (nextLevel === 4) {
+      tower.analyzes.push('Spam Detection');
+      tower.blocks.push('spam');
+    }
+
+    break;
+}
+
     tower.damage += 1;
     tower.range += 15;
     tower.upgradeCost = Math.round(tower.upgradeCost * 1.5);
@@ -845,37 +1055,140 @@ const start = packetPath[0];
     const attack = wave.attack ? String(wave.attack) : null;
     const sourceIp = generateIpAddress(isAttack || attack === 'IP Spoofing');
     const destinationIp = getDestinationIp();
-    const port = getPacketPort(protocol, attack);
-    const tcpFlags = getTcpFlags(protocol, attack);
     const explanation = getPacketExplanation(protocol, attack, isAttack);
+const isMalicious =
+  Boolean((wave as any).is_malicious) ||
+  String(wave.packet_type) === 'attack';
 
+const attackType =
+  (wave as any).attack_type
+    ? String((wave as any).attack_type)
+    : null;
+    const domain =
+  attackType === 'malicious_domain'
+    ? 'evil-malware.com'
+    :attackType === 'c2_domain'
+      ? 'botnet-command.net'
+      : null;
+
+const httpMethod =
+  attackType === 'sql_injection' ||
+  attackType === 'xss' ||
+  attackType === 'path_traversal'
+    ? 'POST'
+    : null;
+
+const url =
+  attackType === 'sql_injection'
+    ? '/login?id=1 OR 1=1'
+    : attackType === 'xss'
+      ? '/search?q=<script>alert(1)</script>'
+      : attackType === 'path_traversal'
+        ? '/download?file=../../windows/system32'
+        : null;
+
+const senderEmail =
+  attackType === 'phishing'
+    ? 'support@paypa1-security.com'
+    : null;
+
+const destinationPort = getPacketPort(protocol, attack);
+const sourcePort = Math.floor(Math.random() * 50000) + 1024;
+
+const tcpFlags = getTcpFlags(protocol, attack);
+
+const osiLevel = Number((wave as any).osi_level || 3);
+
+const payload =
+  attackType === 'malicious_payload'
+    ? '<script>alert(1)</script>'
+
+    :attackType === 'sql_injection'
+      ? "' OR 1=1 --"
+
+    : attackType === 'xss'
+      ? '<script>alert("xss")</script>'
+
+    :attackType === 'dns_tunneling'
+      ? 'ZXhhbXBsZS5kYXRhLmV4Zmls'
+
+    :attackType === 'malware_attachment'
+      ? 'invoice.exe'
+
+    : null;
+
+const signature =
+  attack
+    ? attack.toUpperCase().replaceAll(' ', '_')
+    : null;
+    
     packets.push({
-      id: packetIdCounter,
-      x: start.x,
-      y: start.y,
-      pathIndex: 1,
-      speed: Number(wave.speed || 1),
-       path: packetPath,
+  id: packetIdCounter,
+  x: start.x,
+  y: start.y,
 
-      protocol,
-      attack,
+  pathIndex: 1,
+  speed: Number(wave.speed || 1),
+  path: packetPath,
 
-      sourceIp,
-      destinationIp,
-      port,
-      tcpFlags,
-      isSuspicious: isAttack,
-      explanation,
+  protocol,
+  attack,
+  attackType,
+isProxy:
+  attackType === 'proxy_attack',
 
-      damage: Number(wave.damage || 5),
-      health: packetHealth,
-      maxHealth: packetHealth,
-      reward: packetReward,
+isBotnet:
+  attackType?.includes('botnet'),
+  sourceIp,
+  destinationIp,
 
-      isAttack,
-      reachedBase: false,
-      destroyed: false,
-    });
+  sourcePort,
+  destinationPort,
+
+  tcpFlags,
+  connectionState: null,
+
+packetRate:
+  attackType === 'syn_flood'
+    ? 300
+    : 10,
+      domain,
+
+applicationProtocol:
+
+attackType === 'sql_injection' ||
+  attackType === 'xss' ||
+  attackType === 'path_traversal'
+    ? 'HTTP'
+
+  : attackType === 'malicious_domain' ||
+    attackType === 'dns_tunneling' ||
+    attackType === 'c2_domain'
+      ? 'DNS'
+
+  : protocol,
+
+  httpMethod,
+  url,
+  senderEmail,
+  payload,
+  signature,
+
+  osiLevel,
+  isMalicious,
+
+  isSuspicious: isMalicious,
+  explanation,
+
+  damage: Number(wave.damage || 5),
+
+  health: packetHealth,
+  maxHealth: packetHealth,
+  reward: packetReward,
+
+  reachedBase: false,
+  destroyed: false,
+});
 
     packetIdCounter += 1;
     spawnedInWave += 1;
@@ -895,7 +1208,7 @@ const target = packet.path[packet.pathIndex];
       if (!target) {
         packet.reachedBase = true;
 
-        if (packet.isAttack) {
+        if (packet.isMalicious) {
           baseHealth -= packet.damage;
           missed += 1;
         } else {
@@ -921,6 +1234,46 @@ const target = packet.path[packet.pathIndex];
       }
     }
   }
+
+  function getTowerEffectiveness(
+  tower: Tower,
+  packet: Packet
+): number {
+
+  const packetTags =
+    detectPacketTags(packet);
+
+const matchedRules =
+  tower.blocks.filter(
+    block =>
+      packetTags.includes(
+        block.toLowerCase()
+      )
+  );
+
+    
+  if (
+    matchedRules.length === 0
+  ) {
+    return 0;
+  }
+
+  if (tower.moduleCode === 'stateful_firewall') {
+  return 1.2;
+}
+
+if (tower.moduleCode === 'snort_ips') {
+  return 1.5;
+}
+
+if (tower.moduleCode === 'waf') {
+  return 1.4;
+}
+
+  return 1.0;
+  
+}
+
 
   function updateTowers(time: number): void {
     for (const tower of towers) {
@@ -972,7 +1325,7 @@ const target = packet.path[packet.pathIndex];
         target.destroyed = true;
         destroyed += 1;
 
-        if (target.isAttack) {
+        if (target.isMalicious) {
           correctBlocks += 1;
           resources += target.reward;
         } else {
@@ -981,11 +1334,11 @@ const target = packet.path[packet.pathIndex];
         }
 
         floatingTexts.push({
-          x: target.x,
-          y: target.y,
-          text: target.isAttack ? `+${target.reward}` : '-5',
-          createdAt: time,
-        });
+  x: target.x,
+  y: target.y - 20,
+  text: tower.name,
+  createdAt: time,
+});
 
         updateHud();
       }
@@ -1448,18 +1801,33 @@ canvas.addEventListener('click', event => {
   resources -= cost;
 
   towers.push({
-    id: towerIdCounter,
-    x: point.x,
-    y: point.y,
-    name: String(module.name || 'Башня'),
-    type: String(module.type || 'basic'),
-    range: Number(module.range || 120),
-    damage: Number(module.damage || 1),
-    cost,
-    level: 1,
-    upgradeCost: Math.round(cost * 0.75),
-    lastShotTime: 0,
-  });
+  id: towerIdCounter,
+
+  x: point.x,
+  y: point.y,
+
+  name: String(module.name || 'Башня'),
+  type: String(module.type || 'basic'),
+  moduleCode: String(module.module_code || module.type || 'basic'),
+
+  range: Number(module.range || 120),
+  damage: Number(module.damage || 1),
+  cost,
+
+  osiLevel: Number(module.osi_level || 1),
+
+  analyzes: Array.isArray(module.analyzes)
+    ? module.analyzes.map(String)
+    : [],
+
+  blocks: Array.isArray(module.blocks)
+    ? module.blocks.map(String)
+    : [],
+
+  level: 1,
+  upgradeCost: Math.round(cost * 0.75),
+  lastShotTime: 0,
+});
 
   towerIdCounter += 1;
   selectedModuleIndex = null;
@@ -1630,78 +1998,154 @@ function getThreatSummary(level: Level): string[] {
   return Array.from(threats);
 }
 
-function getRecommendedDefenseModules(level: Level): string[] {
-  const waves = level.waves_config || [];
-  const recommendations = new Set<string>();
+function getRecommendedDefenseModules(
+  wave: any
+): string[] {
 
-  for (const wave of waves) {
-    const protocol = String(wave.protocol || '');
-    const attack = String(wave.attack || '');
+  const recommendations: string[] = [];
 
-    if (protocol === 'ICMP') {
-      recommendations.add('ICMP-фильтр');
+  const attackType =
+    String(
+      (wave as any).attack_type || ''
+    ).toLowerCase();
+
+  switch (attackType) {
+
+    case 'icmp_flood':
+      recommendations.push(
+        'Router ACL',
+        'Anti-DDoS'
+      );
+      break;
+
+    case 'udp_flood':
+      recommendations.push(
+        'Anti-DDoS',
+        'Stateful Firewall'
+      );
+      break;
+
+    case 'syn_flood':
+      recommendations.push(
+        'Stateful Firewall',
+        'Anti-DDoS'
+      );
+      break;
+
+    case 'port_scan':
+      recommendations.push(
+        'Stateful Firewall',
+        'Snort IPS'
+      );
+      break;
+
+    case 'ip_spoofing':
+      recommendations.push(
+        'Router ACL',
+        'Stateful Firewall'
+      );
+      break;
+
+    case 'known_exploit':
+      recommendations.push(
+        'Snort IPS'
+      );
+      break;
+
+    case 'malware_traffic':
+      recommendations.push(
+        'Snort IPS'
+      );
+      break;
+
+    case 'malicious_domain':
+      recommendations.push(
+        'DNS Filter'
+      );
+      break;
+
+    case 'dns_tunneling':
+      recommendations.push(
+        'DNS Filter',
+        'Snort IPS'
+      );
+      break;
+
+    case 'c2_domain':
+      recommendations.push(
+        'DNS Filter',
+        'Snort IPS'
+      );
+      break;
+
+    case 'sql_injection':
+      recommendations.push(
+        'WAF'
+      );
+      break;
+
+    case 'xss':
+      recommendations.push(
+        'WAF'
+      );
+      break;
+
+    case 'path_traversal':
+      recommendations.push(
+        'WAF'
+      );
+      break;
+
+    case 'phishing':
+      recommendations.push(
+        'Email Gateway'
+      );
+      break;
+
+    case 'malware_attachment':
+      recommendations.push(
+        'Email Gateway',
+        'Snort IPS'
+      );
+      break;
+
+    case 'spam':
+      recommendations.push(
+        'Email Gateway'
+      );
+      break;
+  }
+
+  if (
+    recommendations.length === 0
+  ) {
+
+    if (
+      wave.protocol === 'ICMP'
+    ) {
+      recommendations.push(
+        'Router ACL'
+      );
     }
 
-    if (protocol === 'UDP') {
-      recommendations.add('UDP-фильтр');
+    if (
+      wave.protocol === 'UDP'
+    ) {
+      recommendations.push(
+        'Anti-DDoS'
+      );
     }
 
-    if (protocol === 'TCP') {
-      recommendations.add('Firewall');
-    }
-
-    if (protocol === 'HTTP' || protocol === 'DNS') {
-      recommendations.add('DPI');
-      recommendations.add('IDS');
-    }
-
-    if (attack === 'ICMP Flood') {
-      recommendations.add('Rate Limiter');
-      recommendations.add('ICMP-фильтр');
-    }
-
-    if (attack === 'UDP Flood') {
-      recommendations.add('Rate Limiter');
-      recommendations.add('UDP-фильтр');
-    }
-
-    if (attack === 'SYN Flood') {
-      recommendations.add('SYN-защита');
-      recommendations.add('Firewall');
-    }
-
-    if (attack === 'Port Scan') {
-      recommendations.add('IDS');
-      recommendations.add('ACL-фильтр');
-    }
-
-    if (attack === 'IP Spoofing') {
-      recommendations.add('ACL-фильтр');
-      recommendations.add('IDS');
-    }
-
-    if (attack === 'DNS Flood') {
-      recommendations.add('Rate Limiter');
-      recommendations.add('DPI');
-    }
-
-    if (attack === 'Malicious Payload') {
-      recommendations.add('DPI');
-      recommendations.add('IDS');
-    }
-
-    if (attack.includes('Botnet')) {
-      recommendations.add('Rate Limiter');
-      recommendations.add('IDS');
-      recommendations.add('DPI');
+    if (
+      wave.protocol === 'TCP'
+    ) {
+      recommendations.push(
+        'Stateful Firewall'
+      );
     }
   }
 
-  if (recommendations.size === 0) {
-    recommendations.add('Базовый фильтр');
-  }
-
-  return Array.from(recommendations);
+  return recommendations;
 }
 
 function getResultRecommendation(
@@ -1849,150 +2293,221 @@ function getPacketExplanation(protocol: string, attack: string | null, isAttack:
   return 'Пакет имеет признаки подозрительной сетевой активности.';
 }
 
-function canTowerAttackPacket(tower: Tower, packet: Packet): boolean {
-  if (tower.type === 'protocol_filter') {
+function detectPacketTags(
+  packet: Packet
+): string[] {
+
+  const tags: string[] = [];
+
+  if (packet.attackType === 'ip_spoofing') {
+    tags.push('ip_spoofing');
+  }
+
+  if (
+    packet.sourceIp.startsWith('10.') ||
+    packet.sourceIp.startsWith('192.168.')
+  ) {
+    tags.push('private_ip');
+  }
+
+  if (packet.protocol === 'ICMP') {
+    tags.push('icmp');
+  }
+
+  if (packet.protocol === 'UDP') {
+    tags.push('udp');
+  }
+
+  if (packet.protocol === 'TCP') {
+    tags.push('tcp');
+  }
+
+  if (
+    packet.tcpFlags === 'SYN' &&
+    (packet.packetRate || 0) > 100
+  ) {
+    tags.push('syn_flood');
+  }
+
+  if (packet.attackType === 'udp_flood') {
+    tags.push('udp_flood');
+  }
+
+  if (packet.attackType === 'icmp_flood') {
+    tags.push('icmp_flood');
+  }
+
+  if (packet.attackType === 'port_scan') {
+    tags.push('port_scan');
+  }
+
+  if (packet.isProxy) {
+    tags.push('proxy');
+  }
+
+  if (packet.isBotnet) {
+    tags.push('botnet');
+  }
+
+  if (packet.signature) {
+    tags.push(
+      packet.signature.toLowerCase()
+    );
+  }
+
+  if (
+    packet.payload &&
+    packet.payload.length > 0
+  ) {
+    tags.push('payload');
+  }
+
+  if (packet.attackType === 'blocked_ip') {
+    tags.push('blocked_ip');
+  }
+
+  if (
+    packet.destinationPort &&
+    ![80, 443, 53, 22].includes(packet.destinationPort)
+  ) {
+    tags.push('unauthorized_port');
+  }
+
+  if (packet.attackType === 'http_flood') {
+    tags.push('http_flood');
+  }
+
+  if (packet.attackType === 'known_exploit') {
+    tags.push('known_exploit');
+  }
+
+  if (packet.attackType === 'malware_traffic') {
+    tags.push('malware_traffic');
+  }
+
+  if (packet.attackType === 'malicious_domain') {
+    tags.push('malicious_domain');
+  }
+
+  if (packet.attackType === 'dns_tunneling') {
+    tags.push('dns_tunneling');
+  }
+
+  if (packet.attackType === 'c2_domain') {
+    tags.push('c2_domain');
+  }
+
+  if (packet.attackType === 'sql_injection') {
+    tags.push('sql_injection');
+  }
+
+  if (packet.attackType === 'xss') {
+    tags.push('xss');
+  }
+
+  if (packet.attackType === 'path_traversal') {
+    tags.push('path_traversal');
+  }
+
+  if (packet.attackType === 'phishing') {
+    tags.push('phishing');
+  }
+
+  if (packet.attackType === 'malware_attachment') {
+    tags.push('malware_attachment');
+  }
+
+  if (packet.attackType === 'spam') {
+    tags.push('spam');
+  }
+
+  return tags;
+}
+
+function canTowerAttackPacket(
+  tower: Tower,
+  packet: Packet
+): boolean {
+
+  const packetTags =
+    detectPacketTags(packet);
+
+  if (
+    tower.blocks.includes('ALL')
+  ) {
     return true;
   }
 
-  if (tower.type === 'icmp_filter') {
-    return packet.protocol === 'ICMP';
-  }
-
-  if (tower.type === 'udp_filter') {
-    return packet.protocol === 'UDP';
-  }
-
-  if (tower.type === 'firewall') {
-    return packet.protocol === 'TCP' || packet.protocol === 'HTTP' || packet.isAttack;
-  }
-
-  if (tower.type === 'syn_protection') {
-    return packet.attack === 'SYN Flood';
-  }
-
-  if (tower.type === 'rate_limiter') {
-    return packet.attack === 'ICMP Flood'
-      || packet.attack === 'UDP Flood'
-      || packet.attack === 'SYN Flood'
-      || packet.attack === 'DNS Flood'
-      || packet.attack === 'Botnet ICMP'
-      || packet.attack === 'Botnet UDP'
-      || packet.attack === 'Botnet HTTP';
-  }
-
-  if (tower.type === 'acl_filter') {
-    return packet.attack === 'IP Spoofing' || packet.attack === 'Port Scan' || packet.protocol === 'TCP';
-  }
-
-  if (tower.type === 'ids') {
-    return packet.isAttack || packet.attack === 'Port Scan' || packet.attack === 'IP Spoofing' || packet.attack === 'Malicious Payload';
-  }
-
-  if (tower.type === 'dpi') {
-    return packet.attack === 'Malicious Payload' || packet.protocol === 'HTTP' || packet.protocol === 'DNS' || packet.attack === 'Botnet HTTP';
-  }
-
-  return false;
+  return tower.blocks.some(
+  block =>
+    packetTags.includes(
+      block.toLowerCase()
+    )
+);
 }
-
-function getTowerEffectiveness(tower: Tower, packet: Packet): number {
-  if (!canTowerAttackPacket(tower, packet)) {
-    return 0;
-  }
-
-  if (tower.type === 'dpi' && packet.attack === 'Malicious Payload') {
-    return 1.25;
-  }
-
-  if (tower.type === 'syn_protection' && packet.attack === 'SYN Flood') {
-    return 1.25;
-  }
-
-  if (tower.type === 'rate_limiter' && packet.attack?.includes('Flood')) {
-    return 1.15;
-  }
-
-  if (tower.type === 'ids' && packet.isAttack) {
-    return 1;
-  }
-
-  if (tower.type === 'firewall' && packet.attack === 'Malicious Payload') {
-    return 0.5;
-  }
-
-  return 1;
-}
-
 function getModuleIcon(type: string): string {
-  if (type === 'firewall') {
-    return '🔥';
-  }
 
-  if (type === 'icmp_filter') {
-    return '📡';
-  }
-
-  if (type === 'udp_filter') {
-    return '🟡';
-  }
-
-  if (type === 'syn_protection') {
-    return '🛡️';
-  }
-
-  if (type === 'rate_limiter') {
-    return '⏱️';
-  }
-
-  if (type === 'acl_filter') {
+  if (type === 'router_acl') {
     return '📋';
   }
 
-  if (type === 'ids') {
+  if (type === 'stateful_firewall') {
+    return '🛡️';
+  }
+
+  if (type === 'anti_ddos') {
+    return '🌊';
+  }
+
+  if (type === 'snort_ips') {
     return '👁️';
   }
 
-  if (type === 'dpi') {
-    return '🔬';
+  if (type === 'dns_filter') {
+    return '🌐';
+  }
+
+  if (type === 'waf') {
+    return '🔒';
+  }
+
+  if (type === 'email_gateway') {
+    return '📧';
   }
 
   return '⚙️';
 }
 
-function getTowerColor(type: string): string {
-  if (type === 'firewall') {
-    return '#f97316';
-  }
+function getTowerColor(
+  type: string
+): string {
 
-  if (type === 'icmp_filter') {
-    return '#a855f7';
-  }
+  switch (type) {
 
-  if (type === 'udp_filter') {
-    return '#eab308';
-  }
+    case 'router_acl':
+      return '#2563eb'; // синий
 
-  if (type === 'syn_protection') {
-    return '#ef4444';
-  }
+    case 'stateful_firewall':
+      return '#dc2626'; // красный
 
-  if (type === 'rate_limiter') {
-    return '#22c55e';
-  }
+    case 'anti_ddos':
+      return '#7c3aed'; // фиолетовый
 
-  if (type === 'acl_filter') {
-    return '#06b6d4';
-  }
+    case 'snort_ips':
+      return '#ea580c'; // оранжевый
 
-  if (type === 'ids') {
-    return '#8b5cf6';
-  }
+    case 'dns_filter':
+      return '#0891b2'; // голубой
 
-  if (type === 'dpi') {
-    return '#f43f5e';
-  }
+    case 'waf':
+      return '#16a34a'; // зелёный
 
-  return '#3b82f6';
+    case 'email_gateway':
+      return '#ca8a04'; // золотой
+
+    default:
+      return '#6b7280'; // серый
+  }
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
@@ -2184,7 +2699,14 @@ function drawTowers(ctx: CanvasRenderingContext2D, towers: Tower[], selectedTowe
   }
 }
 
-function drawTowerModel(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, type: string): void {
+function drawTowerModel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  type: string
+): void {
+
   ctx.fillStyle = 'rgba(15, 23, 42, 0.96)';
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
@@ -2196,23 +2718,132 @@ function drawTowerModel(ctx: CanvasRenderingContext2D, x: number, y: number, col
 
   ctx.fillStyle = color;
 
-  if (type === 'firewall') {
-    drawFirewallIcon(ctx, x, y);
-  } else if (type === 'rate_limiter') {
-    drawRateLimiterIcon(ctx, x, y);
-  } else if (type === 'syn_protection') {
-    drawShieldIcon(ctx, x, y);
-  } else {
-    drawFilterIcon(ctx, x, y);
+  switch (type) {
+
+    case 'router_acl':
+      drawRouterIcon(ctx, x, y);
+      break;
+
+    case 'stateful_firewall':
+      drawFirewallIcon(ctx, x, y);
+      break;
+
+    case 'anti_ddos':
+      drawRateLimiterIcon(ctx, x, y);
+      break;
+
+    case 'snort_ips':
+      drawEyeIcon(ctx, x, y);
+      break;
+
+    case 'dns_filter':
+      drawDnsIcon(ctx, x, y);
+      break;
+
+    case 'waf':
+      drawShieldIcon(ctx, x, y);
+      break;
+
+    case 'email_gateway':
+      drawMailIcon(ctx, x, y);
+      break;
+
+    default:
+      drawFilterIcon(ctx, x, y);
   }
 
   ctx.beginPath();
   ctx.arc(x, y, 25, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
   ctx.lineWidth = 1;
   ctx.stroke();
 }
 
+function drawRouterIcon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number
+): void {
+
+  ctx.fillRect(x - 10, y - 4, 20, 8);
+
+  ctx.fillRect(x - 12, y - 1, 4, 2);
+  ctx.fillRect(x + 8, y - 1, 4, 2);
+
+  ctx.fillRect(x - 1, y - 12, 2, 4);
+  ctx.fillRect(x - 1, y + 8, 2, 4);
+}
+
+function drawEyeIcon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number
+): void {
+
+  ctx.beginPath();
+
+  ctx.ellipse(
+    x,
+    y,
+    10,
+    6,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.strokeStyle = ctx.fillStyle;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawDnsIcon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number
+): void {
+
+  ctx.beginPath();
+  ctx.arc(x, y, 9, 0, Math.PI * 2);
+  ctx.strokeStyle = ctx.fillStyle;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x - 9, y);
+  ctx.lineTo(x + 9, y);
+
+  ctx.moveTo(x, y - 9);
+  ctx.lineTo(x, y + 9);
+
+  ctx.stroke();
+}
+
+function drawMailIcon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number
+): void {
+
+  ctx.strokeStyle = ctx.fillStyle;
+
+  ctx.strokeRect(
+    x - 10,
+    y - 7,
+    20,
+    14
+  );
+
+  ctx.beginPath();
+
+  ctx.moveTo(x - 10, y - 7);
+  ctx.lineTo(x, y + 1);
+  ctx.lineTo(x + 10, y - 7);
+
+  ctx.stroke();
+}
 function drawFirewallIcon(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.fillRect(x - 10, y - 8, 20, 5);
   ctx.fillRect(x - 10, y - 1, 20, 5);
@@ -2266,9 +2897,9 @@ function drawPackets(ctx: CanvasRenderingContext2D, packets: Packet[]): void {
 
     ctx.save();
     ctx.shadowColor = color;
-    ctx.shadowBlur = packet.isAttack ? 16 : 10;
+    ctx.shadowBlur = packet.isMalicious ? 16 : 10;
 
-    if (packet.isAttack) {
+    if (packet.isMalicious) {
       drawAttackPacket(ctx, packet.x, packet.y, color);
     } else {
       drawNormalPacket(ctx, packet.x, packet.y, color);
@@ -2283,16 +2914,10 @@ function drawPackets(ctx: CanvasRenderingContext2D, packets: Packet[]): void {
     ctx.font = '10px Arial';
     ctx.fillText(`${packet.health}/${packet.maxHealth}`, packet.x - 8, packet.y + 4);
 
-    if (packet.port !== 0) {
+    if (packet.destinationPort !== 0) {
       ctx.fillStyle = '#cbd5e1';
       ctx.font = '9px Arial';
-      ctx.fillText(`:${packet.port}`, packet.x - 10, packet.y + 15);
-    }
-
-    if (packet.attack) {
-      ctx.fillStyle = '#fecaca';
-      ctx.font = '9px Arial';
-      ctx.fillText(packet.attack, packet.x - 24, packet.y + 28);
+      ctx.fillText(`:${packet.destinationPort}`, packet.x - 10, packet.y + 15);
     }
 
     ctx.restore();
@@ -2300,7 +2925,7 @@ function drawPackets(ctx: CanvasRenderingContext2D, packets: Packet[]): void {
 }
 
 function getPacketColor(packet: Packet): string {
-  if (packet.isAttack) {
+  if (packet.isMalicious) {
     return '#ef4444';
   }
 
@@ -2414,33 +3039,7 @@ function drawPauseOverlay(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEleme
   ctx.fillText('Нажмите “Продолжить”, чтобы вернуться к уровню', canvas.width / 2 - 170, canvas.height / 2 + 34);
 }
 
-function wrapCanvasText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number
-): void {
-  const words = text.split(' ');
-  let line = '';
-  let currentY = y;
 
-  for (const word of words) {
-    const testLine = line + word + ' ';
-    const metrics = ctx.measureText(testLine);
-
-    if (metrics.width > maxWidth && line !== '') {
-      ctx.fillText(line, x, currentY);
-      line = word + ' ';
-      currentY += lineHeight;
-    } else {
-      line = testLine;
-    }
-  }
-
-  ctx.fillText(line, x, currentY);
-}
 
 function roundRect(
   ctx: CanvasRenderingContext2D,
@@ -2536,4 +3135,36 @@ function drawPlacementPreview(
   }
 
   ctx.restore();
+}
+
+function getModuleDescription(
+  code: string
+): string {
+
+  switch (code) {
+
+    case 'router_acl':
+      return 'Фильтрация по IP-адресам, ICMP и сетевым протоколам.';
+
+    case 'stateful_firewall':
+      return 'Контроль TCP/UDP-соединений, анализ портов и состояния сеанса.';
+
+    case 'anti_ddos':
+      return 'Обнаружение аномальной интенсивности трафика и блокировка flood-атак.';
+
+    case 'snort_ips':
+      return 'Обнаружение и предотвращение известных атак по сигнатурам.';
+
+    case 'dns_filter':
+      return 'Фильтрация DNS-запросов и блокировка вредоносных доменов.';
+
+    case 'waf':
+      return 'Защита веб-приложений от SQL Injection, XSS и Path Traversal.';
+
+    case 'email_gateway':
+      return 'Проверка электронной почты на фишинг, спам и вредоносные вложения.';
+
+    default:
+      return 'Модуль сетевой безопасности.';
+  }
 }

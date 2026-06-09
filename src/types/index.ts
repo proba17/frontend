@@ -49,6 +49,56 @@ export interface Level {
   is_active: boolean;
 }
 
+export interface DefenseModule {
+  name: string;
+  type: string;
+  module_code?: string;
+
+  cost: number;
+  range: number;
+  damage: number;
+
+  osi_level: number;
+  analyzes: string[];
+  blocks: string[];
+
+  description?: string;
+}
+
+export interface GameWave {
+  wave: number;
+  packet_type: string;
+  protocol: string;
+
+  attack?: string | null;
+  attack_type?: string | null;
+
+  count: number;
+  speed: number;
+  spawn_delay: number;
+  damage: number;
+
+  src_ip?: string;
+  dst_ip?: string;
+  src_port?: number;
+  dst_port?: number;
+
+  tcp_flags?: string;
+  connection_state?: string;
+
+  packet_rate?: number;
+  domain?: string;
+  application_protocol?: string;
+
+  http_method?: string;
+  url?: string;
+  payload?: string;
+  signature?: string;
+
+  osi_level: number;
+  is_malicious: boolean;
+}
+
 export interface ResultCreate {
   level_id: number;
   score: number;
@@ -202,4 +252,33 @@ export interface LeaderboardItem {
   total_correct_blocks: number;
   total_false_positives: number;
   completed_levels: number;
+}
+
+export interface FinalTestQuestion {
+  id: number;
+
+  question: string;
+
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+}
+
+export interface FinalTestResult {
+  score: number;
+
+  correct_answers: number;
+
+  total_questions: number;
+
+  passed: boolean;
+}
+
+export interface FinalTestStatistics {
+  attempts: number;
+  best_score: number;
+  average_score: number;
+  last_score: number;
+  certificate: string;
 }

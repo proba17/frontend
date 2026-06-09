@@ -5,6 +5,8 @@ import {
   getMyStatistics,
   refreshToken,
   deleteMyAccount,
+    getFinalTestStatistics
+
 } from '../api/client';
 import { navigate } from '../main';
 
@@ -22,10 +24,11 @@ export async function renderProfilePage(app: HTMLDivElement): Promise<void> {
     await refreshToken();
     await checkAchievements();
 
-    const [user, statistics, achievements] = await Promise.all([
+    const [user, statistics, achievements, finalTest] = await Promise.all([
       getMe(),
       getMyStatistics(),
       getMyAchievementsFull(),
+      getFinalTestStatistics()
     ]);
 
     const achievementsHtml =
@@ -122,6 +125,47 @@ export async function renderProfilePage(app: HTMLDivElement): Promise<void> {
         </div>
 
         <div class="card">
+
+  <h2>🏆 Итоговая аттестация</h2>
+
+  <div class="stats-grid">
+
+    <div class="stat-card">
+      <span>Попыток</span>
+      <b>${finalTest.attempts}</b>
+    </div>
+
+    <div class="stat-card">
+      <span>Лучший результат</span>
+      <b>${finalTest.best_score}%</b>
+    </div>
+
+    <div class="stat-card">
+      <span>Средний результат</span>
+      <b>${finalTest.average_score}%</b>
+    </div>
+
+    <div class="stat-card">
+      <span>Последний результат</span>
+      <b>${finalTest.last_score}%</b>
+    </div>
+
+  </div>
+
+  <div
+    style="
+      margin-top:20px;
+      text-align:center;
+      font-size:22px;
+      font-weight:bold;
+    "
+  >
+    
+  
+
+</div>
+
+        <div class="card">
   <h2>Рекомендации по обучению</h2>
   ${getLearningRecommendations(statistics)}
 </div>
@@ -132,6 +176,7 @@ export async function renderProfilePage(app: HTMLDivElement): Promise<void> {
         </div>
       </div>
     `;
+ 
 
     document.querySelector<HTMLButtonElement>('#deleteAccountButton')?.addEventListener('click', async () => {
   const firstConfirm = confirm(
@@ -178,6 +223,7 @@ export async function renderProfilePage(app: HTMLDivElement): Promise<void> {
       </div>
     `;
 
+   
     
     document.querySelector<HTMLButtonElement>('#backButton')!.addEventListener('click', () => {
       navigate('levels');
