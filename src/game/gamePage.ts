@@ -493,6 +493,192 @@ function renderGameTutorial(app: HTMLDivElement, level: Level): void {
   });
 }
 
+type TowerUpgradeRule = {
+  level: number;
+  analyze: string;
+  block: string;
+};
+
+const TOWER_UPGRADE_RULES: Record<string, TowerUpgradeRule[]> = {
+  router_acl: [
+    {
+      level: 2,
+      analyze: 'ICMP Filtering',
+      block: 'icmp_flood',
+    },
+    {
+      level: 3,
+      analyze: 'Source IP Validation',
+      block: 'ip_spoofing',
+    },
+    {
+      level: 4,
+      analyze: 'Blocked IP List',
+      block: 'blocked_ip',
+    },
+  ],
+
+  stateful_firewall: [
+    {
+      level: 2,
+      analyze: 'TCP Flags',
+      block: 'syn_flood',
+    },
+    {
+      level: 3,
+      analyze: 'Connection State',
+      block: 'port_scan',
+    },
+    {
+      level: 4,
+      analyze: 'Port Policy',
+      block: 'unauthorized_port',
+    },
+  ],
+
+  anti_ddos: [
+    {
+      level: 2,
+      analyze: 'UDP Rate',
+      block: 'udp_flood',
+    },
+    {
+      level: 2,
+      analyze: 'ICMP Rate',
+      block: 'icmp_flood',
+    },
+    {
+      level: 3,
+      analyze: 'TCP Connection Rate',
+      block: 'syn_flood',
+    },
+    {
+      level: 3,
+      analyze: 'HTTP Request Rate',
+      block: 'http_flood',
+    },
+    {
+      level: 4,
+      analyze: 'Distributed Traffic Pattern',
+      block: 'botnet',
+    },
+  ],
+
+  snort_ips: [
+    {
+      level: 2,
+      analyze: 'Exploit Signature',
+      block: 'known_exploit',
+    },
+    {
+      level: 2,
+      analyze: 'Malware Signature',
+      block: 'malware_traffic',
+    },
+    {
+      level: 3,
+      analyze: 'Scan Signature',
+      block: 'port_scan',
+    },
+    {
+      level: 3,
+      analyze: 'Payload Analysis',
+      block: 'sql_injection',
+    },
+    {
+      level: 4,
+      analyze: 'Botnet Indicators',
+      block: 'botnet',
+    },
+  ],
+
+  dns_filter: [
+    {
+      level: 2,
+      analyze: 'Domain Reputation',
+      block: 'malicious_domain',
+    },
+    {
+      level: 3,
+      analyze: 'DNS Behavior',
+      block: 'dns_tunneling',
+    },
+    {
+      level: 3,
+      analyze: 'Command and Control Domain',
+      block: 'c2_domain',
+    },
+    {
+      level: 4,
+      analyze: 'Botnet DNS Activity',
+      block: 'botnet',
+    },
+  ],
+
+  waf: [
+    {
+      level: 2,
+      analyze: 'SQL Patterns',
+      block: 'sql_injection',
+    },
+    {
+      level: 2,
+      analyze: 'Script Payload',
+      block: 'xss',
+    },
+    {
+      level: 3,
+      analyze: 'Path Validation',
+      block: 'path_traversal',
+    },
+    {
+      level: 3,
+      analyze: 'HTTP Request Rate',
+      block: 'http_flood',
+    },
+    {
+      level: 4,
+      analyze: 'Exploit Payload',
+      block: 'known_exploit',
+    },
+  ],
+
+  email_gateway: [
+    {
+      level: 2,
+      analyze: 'Suspicious Links',
+      block: 'phishing',
+    },
+    {
+      level: 2,
+      analyze: 'Spam Pattern',
+      block: 'spam',
+    },
+    {
+      level: 3,
+      analyze: 'Attachment Scan',
+      block: 'malware_attachment',
+    },
+    {
+      level: 4,
+      analyze: 'Malicious Mail Domain',
+      block: 'malicious_domain',
+    },
+  ],
+};
+
+
+
+function applyTowerUpgradeRules(tower: Tower): void {
+  const rules = TOWER_UPGRADE_RULES[tower.moduleCode] || [];
+
+  for (const rule of rules) {
+    if (rule.level === tower.level) {
+      addTowerRule(tower, rule.analyze, rule.block);
+    }
+  }
+}
+
 function startGame(app: HTMLDivElement, level: Level): void {
 const paths = getLevelPaths(level);
   const base = level.map_config?.base || DEFAULT_BASE;
@@ -790,179 +976,54 @@ function deleteSelectedTower(): void {
   }
 }
 
-  function upgradeSelectedTower(): void {
-
-     if (isPaused || isFinished) {
+ function upgradeSelectedTower(): void {
+  if (isPaused || isFinished) {
     return;
   }
-    if (selectedTowerId === null) {
-      return;
-    }
 
-    const tower = towers.find(item => item.id === selectedTowerId);
-
-    if (!tower) {
-      return;
-    }
-
-    if (resources < tower.upgradeCost) {
-      const towerInfo = document.querySelector<HTMLDivElement>('#towerInfo');
-
-      if (towerInfo) {
-        towerInfo.innerHTML += '<p class="error">Недостаточно ресурсов для улучшения.</p>';
-      }
-
-      return;
-    }
-
-    resources -= tower.upgradeCost;
-    tower.level += 1;
-
-    const nextLevel = tower.level;
-
-switch (tower.moduleCode) {
-
-  case 'router_acl':
-
-    if (nextLevel === 2) {
-      tower.analyzes.push('Network');
-      tower.blocks.push('private_ip');
-    }
-
-    if (nextLevel === 3) {
-      tower.analyzes.push('Subnet');
-      tower.blocks.push('ip_spoofing');
-    }
-
-    if (nextLevel === 4) {
-      tower.analyzes.push('GeoIP');
-      tower.blocks.push('blocked_ip');
-    }
-
-    break;
-
-  case 'stateful_firewall':
-
-    if (nextLevel === 2) {
-      tower.analyzes.push('TCP Flags');
-      tower.blocks.push('syn_flood');
-    }
-
-    if (nextLevel === 3) {
-      tower.analyzes.push('Connection State');
-      tower.blocks.push('port_scan');
-    }
-
-    if (nextLevel === 4) {
-      tower.analyzes.push('Session Tracking');
-      tower.blocks.push('unauthorized_port');
-    }
-
-    break;
-
-  case 'anti_ddos':
-
-    if (nextLevel === 2) {
-      tower.analyzes.push('Connection Rate');
-      tower.blocks.push('udp_flood');
-    }
-
-    if (nextLevel === 3) {
-      tower.analyzes.push('Traffic Burst');
-      tower.blocks.push('icmp_flood');
-    }
-
-    if (nextLevel === 4) {
-      tower.analyzes.push('HTTP Requests');
-      tower.blocks.push('http_flood');
-    }
-
-    break;
-
-  case 'snort_ips':
-
-    if (nextLevel === 2) {
-      tower.analyzes.push('Signature Database');
-      tower.blocks.push('known_exploit');
-    }
-
-    if (nextLevel === 3) {
-      tower.analyzes.push('Malware Detection');
-      tower.blocks.push('malware_traffic');
-    }
-
-    if (nextLevel === 4) {
-      tower.analyzes.push('Botnet Indicators');
-      tower.blocks.push('botnet');
-    }
-
-    break;
-
-  case 'dns_filter':
-
-    if (nextLevel === 2) {
-      tower.analyzes.push('DNS Reputation');
-      tower.blocks.push('malicious_domain');
-    }
-
-    if (nextLevel === 3) {
-      tower.analyzes.push('DNS Behavior');
-      tower.blocks.push('dns_tunneling');
-    }
-
-    if (nextLevel === 4) {
-      tower.analyzes.push('C2 Detection');
-      tower.blocks.push('c2_domain');
-    }
-
-    break;
-
-  case 'waf':
-
-    if (nextLevel === 2) {
-      tower.analyzes.push('SQL Patterns');
-      tower.blocks.push('sql_injection');
-    }
-
-    if (nextLevel === 3) {
-      tower.analyzes.push('JavaScript Payload');
-      tower.blocks.push('xss');
-    }
-
-    if (nextLevel === 4) {
-      tower.analyzes.push('Path Validation');
-      tower.blocks.push('path_traversal');
-    }
-
-    break;
-
-  case 'email_gateway':
-
-    if (nextLevel === 2) {
-      tower.analyzes.push('Links');
-      tower.blocks.push('phishing');
-    }
-
-    if (nextLevel === 3) {
-      tower.analyzes.push('Attachments');
-      tower.blocks.push('malware_attachment');
-    }
-
-    if (nextLevel === 4) {
-      tower.analyzes.push('Spam Detection');
-      tower.blocks.push('spam');
-    }
-
-    break;
-}
-
-    tower.damage += 1;
-    tower.range += 15;
-    tower.upgradeCost = Math.round(tower.upgradeCost * 1.5);
-
-    updateHud();
-    showTowerInfo(tower);
+  if (selectedTowerId === null) {
+    return;
   }
+
+  const tower = towers.find(item => item.id === selectedTowerId);
+
+  if (!tower) {
+    return;
+  }
+
+  if (tower.level >= 4) {
+    const towerInfo = document.querySelector<HTMLDivElement>('#towerInfo');
+
+    if (towerInfo) {
+      towerInfo.innerHTML += '<p class="error">Модуль уже имеет максимальный уровень.</p>';
+    }
+
+    return;
+  }
+
+  if (resources < tower.upgradeCost) {
+    const towerInfo = document.querySelector<HTMLDivElement>('#towerInfo');
+
+    if (towerInfo) {
+      towerInfo.innerHTML += '<p class="error">Недостаточно ресурсов для улучшения.</p>';
+    }
+
+    return;
+  }
+
+  resources -= tower.upgradeCost;
+  tower.level += 1;
+
+
+applyTowerUpgradeRules(tower);
+
+  tower.damage += 1;
+  tower.range += 15;
+  tower.upgradeCost = Math.round(tower.upgradeCost * 1.5);
+
+  updateHud();
+  showTowerInfo(tower);
+}
 
   function distanceToSegment(
     pointX: number,
@@ -1239,39 +1300,37 @@ const target = packet.path[packet.pathIndex];
   tower: Tower,
   packet: Packet
 ): number {
+  if (tower.level < 2) {
+    return 0;
+  }
 
-  const packetTags =
-    detectPacketTags(packet);
+  if (!packet.isMalicious) {
+    return 0;
+  }
 
-const matchedRules =
-  tower.blocks.filter(
-    block =>
-      packetTags.includes(
-        block.toLowerCase()
-      )
+  const packetTags = detectPacketTags(packet);
+
+  const matchedRules = tower.blocks.filter(
+    block => packetTags.includes(block.toLowerCase())
   );
 
-    
-  if (
-    matchedRules.length === 0
-  ) {
+  if (matchedRules.length === 0) {
     return 0;
   }
 
   if (tower.moduleCode === 'stateful_firewall') {
-  return 1.2;
-}
+    return 1.2;
+  }
 
-if (tower.moduleCode === 'snort_ips') {
-  return 1.5;
-}
+  if (tower.moduleCode === 'snort_ips') {
+    return 1.5;
+  }
 
-if (tower.moduleCode === 'waf') {
-  return 1.4;
-}
+  if (tower.moduleCode === 'waf') {
+    return 1.4;
+  }
 
   return 1.0;
-  
 }
 
 
@@ -1785,22 +1844,25 @@ canvas.addEventListener('click', event => {
     return;
   }
 
-  const module = modules[selectedModuleIndex];
-  const cost = Number(module.cost || 0);
+const module = modules[selectedModuleIndex];
+const cost = Number(module.cost || 0);
 
-  if (resources < cost) {
-    const selectedModuleInfo = document.querySelector<HTMLParagraphElement>('#selectedModuleInfo');
+if (resources < cost) {
+  const selectedModuleInfo = document.querySelector<HTMLParagraphElement>('#selectedModuleInfo');
 
-    if (selectedModuleInfo) {
-      selectedModuleInfo.textContent = 'Недостаточно ресурсов для установки модуля.';
-    }
-
-    return;
+  if (selectedModuleInfo) {
+    selectedModuleInfo.textContent = 'Недостаточно ресурсов для установки модуля.';
   }
 
-  resources -= cost;
+  return;
+}
 
-  towers.push({
+resources -= cost;
+
+const moduleCode = String(module.module_code || module.type || 'basic');
+const baseRules = getBaseTowerRules(moduleCode);
+
+towers.push({
   id: towerIdCounter,
 
   x: point.x,
@@ -1808,7 +1870,7 @@ canvas.addEventListener('click', event => {
 
   name: String(module.name || 'Башня'),
   type: String(module.type || 'basic'),
-  moduleCode: String(module.module_code || module.type || 'basic'),
+  moduleCode,
 
   range: Number(module.range || 120),
   damage: Number(module.damage || 1),
@@ -1816,13 +1878,8 @@ canvas.addEventListener('click', event => {
 
   osiLevel: Number(module.osi_level || 1),
 
-  analyzes: Array.isArray(module.analyzes)
-    ? module.analyzes.map(String)
-    : [],
-
-  blocks: Array.isArray(module.blocks)
-    ? module.blocks.map(String)
-    : [],
+  analyzes: [...baseRules.analyzes],
+  blocks: [...baseRules.blocks],
 
   level: 1,
   upgradeCost: Math.round(cost * 0.75),
@@ -1998,154 +2055,163 @@ function getThreatSummary(level: Level): string[] {
   return Array.from(threats);
 }
 
-function getRecommendedDefenseModules(
-  wave: any
-): string[] {
+function getBaseTowerRules(moduleCode: string): {
+  analyzes: string[];
+  blocks: string[];
+} {
+  switch (moduleCode) {
+    case 'router_acl':
+      return {
+        analyzes: ['Protocol'],
+        blocks: [],
+      };
 
-  const recommendations: string[] = [];
+    case 'stateful_firewall':
+      return {
+        analyzes: ['Protocol', 'Port'],
+        blocks: [],
+      };
 
-  const attackType =
-    String(
-      (wave as any).attack_type || ''
-    ).toLowerCase();
+    case 'anti_ddos':
+      return {
+        analyzes: ['Traffic Rate'],
+        blocks: [],
+      };
 
-  switch (attackType) {
+    case 'snort_ips':
+      return {
+        analyzes: ['Basic Signature'],
+        blocks: [],
+      };
 
-    case 'icmp_flood':
-      recommendations.push(
-        'Router ACL',
-        'Anti-DDoS'
-      );
-      break;
+    case 'dns_filter':
+      return {
+        analyzes: ['DNS Request'],
+        blocks: [],
+      };
 
-    case 'udp_flood':
-      recommendations.push(
-        'Anti-DDoS',
-        'Stateful Firewall'
-      );
-      break;
+    case 'waf':
+      return {
+        analyzes: ['HTTP Request'],
+        blocks: [],
+      };
 
-    case 'syn_flood':
-      recommendations.push(
-        'Stateful Firewall',
-        'Anti-DDoS'
-      );
-      break;
+    case 'email_gateway':
+      return {
+        analyzes: ['Email Metadata'],
+        blocks: [],
+      };
 
-    case 'port_scan':
-      recommendations.push(
-        'Stateful Firewall',
-        'Snort IPS'
-      );
-      break;
+    default:
+      return {
+        analyzes: [],
+        blocks: [],
+      };
+  }
+}
 
-    case 'ip_spoofing':
-      recommendations.push(
-        'Router ACL',
-        'Stateful Firewall'
-      );
-      break;
-
-    case 'known_exploit':
-      recommendations.push(
-        'Snort IPS'
-      );
-      break;
-
-    case 'malware_traffic':
-      recommendations.push(
-        'Snort IPS'
-      );
-      break;
-
-    case 'malicious_domain':
-      recommendations.push(
-        'DNS Filter'
-      );
-      break;
-
-    case 'dns_tunneling':
-      recommendations.push(
-        'DNS Filter',
-        'Snort IPS'
-      );
-      break;
-
-    case 'c2_domain':
-      recommendations.push(
-        'DNS Filter',
-        'Snort IPS'
-      );
-      break;
-
-    case 'sql_injection':
-      recommendations.push(
-        'WAF'
-      );
-      break;
-
-    case 'xss':
-      recommendations.push(
-        'WAF'
-      );
-      break;
-
-    case 'path_traversal':
-      recommendations.push(
-        'WAF'
-      );
-      break;
-
-    case 'phishing':
-      recommendations.push(
-        'Email Gateway'
-      );
-      break;
-
-    case 'malware_attachment':
-      recommendations.push(
-        'Email Gateway',
-        'Snort IPS'
-      );
-      break;
-
-    case 'spam':
-      recommendations.push(
-        'Email Gateway'
-      );
-      break;
+function addTowerRule(
+  tower: Tower,
+  analyzeRule: string,
+  blockRule: string
+): void {
+  if (!tower.analyzes.includes(analyzeRule)) {
+    tower.analyzes.push(analyzeRule);
   }
 
-  if (
-    recommendations.length === 0
-  ) {
+  if (!tower.blocks.includes(blockRule)) {
+    tower.blocks.push(blockRule);
+  }
+}
 
-    if (
-      wave.protocol === 'ICMP'
-    ) {
-      recommendations.push(
-        'Router ACL'
-      );
+function getRecommendedDefenseModules(level: Level): string[] {
+  const recommendations = new Set<string>();
+
+  const moduleNames: Record<string, string> = {
+    router_acl: 'ACL маршрутизатора',
+    stateful_firewall: 'Межсетевой экран',
+    anti_ddos: 'Anti-DDoS система',
+    snort_ips: 'Snort IPS',
+    dns_filter: 'DNS-фильтр',
+    waf: 'Web Application Firewall',
+    email_gateway: 'Почтовый шлюз безопасности',
+  };
+
+  const attackToModules: Record<string, string[]> = {
+    icmp_flood: ['router_acl', 'anti_ddos'],
+    udp_flood: ['anti_ddos', 'stateful_firewall'],
+    syn_flood: ['stateful_firewall', 'anti_ddos'],
+    http_flood: ['anti_ddos', 'waf'],
+
+    port_scan: ['stateful_firewall', 'snort_ips'],
+    ip_spoofing: ['router_acl', 'stateful_firewall'],
+    blocked_ip: ['router_acl'],
+    unauthorized_port: ['stateful_firewall'],
+
+    known_exploit: ['snort_ips'],
+    malware_traffic: ['snort_ips'],
+    botnet: ['snort_ips', 'anti_ddos'],
+
+    malicious_domain: ['dns_filter'],
+    dns_tunneling: ['dns_filter', 'snort_ips'],
+    c2_domain: ['dns_filter', 'snort_ips'],
+
+    sql_injection: ['waf'],
+    xss: ['waf'],
+    path_traversal: ['waf'],
+    command_injection: ['waf'],
+
+    phishing: ['email_gateway'],
+    malware_attachment: ['email_gateway', 'snort_ips'],
+    spam: ['email_gateway'],
+  };
+
+  function normalize(value: unknown): string {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replaceAll('-', '_')
+      .replaceAll(' ', '_');
+  }
+
+  for (const wave of level.waves_config || []) {
+    const attackType = normalize((wave as any).attack_type);
+    const attackName = normalize((wave as any).attack);
+    const protocol = normalize((wave as any).protocol);
+
+    const attackKey = attackType || attackName;
+
+    if (attackKey && attackToModules[attackKey]) {
+      for (const moduleCode of attackToModules[attackKey]) {
+        recommendations.add(moduleNames[moduleCode] || moduleCode);
+      }
+
+      continue;
     }
 
-    if (
-      wave.protocol === 'UDP'
-    ) {
-      recommendations.push(
-        'Anti-DDoS'
-      );
+    if (protocol === 'icmp') {
+      recommendations.add(moduleNames.router_acl);
+      recommendations.add(moduleNames.anti_ddos);
     }
 
-    if (
-      wave.protocol === 'TCP'
-    ) {
-      recommendations.push(
-        'Stateful Firewall'
-      );
+    if (protocol === 'udp') {
+      recommendations.add(moduleNames.anti_ddos);
+    }
+
+    if (protocol === 'tcp') {
+      recommendations.add(moduleNames.stateful_firewall);
+    }
+
+    if (protocol === 'dns') {
+      recommendations.add(moduleNames.dns_filter);
+    }
+
+    if (protocol === 'http') {
+      recommendations.add(moduleNames.waf);
     }
   }
 
-  return recommendations;
+  return Array.from(recommendations);
 }
 
 function getResultRecommendation(
