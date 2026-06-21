@@ -3,6 +3,7 @@ import {
   getTeacherResults,
   getTeacherStatistics,
   getTeacherUsers,
+  getTeacherTestResults,
 } from '../api/client';
 import { navigate } from '../main';
 
@@ -38,10 +39,11 @@ export async function renderTeacherPage(app: HTMLDivElement): Promise<void> {
       return;
     }
 
-    const [statistics, users, results] = await Promise.all([
+    const [statistics, users, results, testResults] = await Promise.all([
   getTeacherStatistics(),
   getTeacherUsers(),
   getTeacherResults(),
+  getTeacherTestResults(),
 ]);
 
     const averageAccuracy = results.length === 0
@@ -193,15 +195,20 @@ export async function renderTeacherPage(app: HTMLDivElement): Promise<void> {
                           <td>${item.damage_taken}</td>
                           <td>${item.time_spent} сек.</td>
                         </tr>
+                        
                       `).join('')}
                     </tbody>
                   </table>
                 </div>
+                
               `
           }
         </div>
+        
       </div>
     `;
+
+    
 
     document.querySelector<HTMLButtonElement>('#backButton')!.addEventListener('click', () => {
       navigate('levels');

@@ -282,3 +282,24 @@ export interface FinalTestStatistics {
   last_score: number;
   certificate: string;
 }
+
+export interface TestResultCreate {
+  test_id: string;
+  test_title: string;
+  correct_answers: number;
+  total_questions: number;
+  percent: number;
+}
+
+export interface TeacherTestResult {
+  id: number;
+  user_id: number;
+  username: string;
+  email: string;
+  test_id: string;
+  test_title: string;
+  correct_answers: number;
+  total_questions: number;
+  percent: number;
+  created_at: string;
+}

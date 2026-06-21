@@ -522,7 +522,7 @@ const TOWER_UPGRADE_RULES: Record<string, TowerUpgradeRule[]> = {
     {
       level: 2,
       analyze: 'TCP Flags',
-      block: 'syn_flood',
+      block: 'syn_flood, ununauthorized_port',
     },
     {
       level: 3,

@@ -17,9 +17,24 @@ import type {
   LeaderboardItem,
   FinalTestQuestion,
   FinalTestResult,
+  TestResultCreate,
+TeacherTestResult,
 } from '../types';
 
 const API_URL = 'http://localhost:8000';
+
+export async function saveTestResult(
+  data: TestResultCreate
+): Promise<TeacherTestResult> {
+  return request<TeacherTestResult>('/tests/results', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getTeacherTestResults(): Promise<TeacherTestResult[]> {
+  return request<TeacherTestResult[]>('/tests/teacher');
+}
 
 function getToken(): string | null {
   return localStorage.getItem('access_token');

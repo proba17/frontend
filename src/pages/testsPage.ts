@@ -1,4 +1,5 @@
 import { navigate } from '../main';
+import { saveTestResult } from '../api/client';
 
 interface TestQuestion {
   id: number;
@@ -673,6 +674,15 @@ const question =
 
     const percent = Math.round((correctAnswers / test.questions.length) * 100);
 
+    void saveTestResult({
+  test_id: test.id,
+  test_title: test.title,
+  correct_answers: correctAnswers,
+  total_questions: test.questions.length,
+  percent,
+}).catch(error => {
+  console.error('Ошибка сохранения результата теста:', error);
+});
     app.innerHTML = `
       <div class="app">
         <div class="topbar">
